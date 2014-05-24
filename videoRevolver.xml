@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+<!-- Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *	
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License
+-->
+  <ModulePrefs title="Video Feed Revolver">
+    <Require feature="rpc"/>
+    <Require feature="views"/>
+  </ModulePrefs>
+  <Content type="html">
+    <![CDATA[
+    
+<script src="//plus.google.com/hangouts/_/api/v1/hangout.js"></script>
+<div style="background-color:#111111;padding:50px 30px; height:100%;color:#EEEEEE;" id="fullsize">
+	
+<input type="checkbox" id="checkEnabled" onChange="checkEnabledChange()"/> revolver enabled
+<br/>
+<br/>
+Interval <input type="text" value="8" id="intervalField" style="margin:6px;border:1px;width:40px;padding-left:5px;" onChange="intervalFieldChange()"/> sec
+
+<br/>
+<br/>
+<!--
+<input type=button value="Next feed" id="showNextFeedButton"
+	onClick="showNextFeed()"/>
+<br/>
+<input type=button value="Start" id="start"
+	onClick="startAutoRevolve()"/>
+<input type=button value="Stop" id="stop"
+	onClick="stopAutoRevolve()"/>
+
+
+<div id="participants"><p><i>Participants not available yet.</i></p></div>
+
+-->
+
+</div>
+<script>
+
+// Remember some divs for easy reference later.
+var participantsDiv = document.getElementById('participants');
+var whosTalkin = document.getElementById('whosTalkin');
+
+var intervalObject;
+var intervalMilliseconds = 5000;
+
+function checkEnabledChange() {
+
+	if (document.getElementById("checkEnabled").checked) {startAutoRevolve();} else {stopAutoRevolve()};
+}
+
+function intervalFieldChange() {
+
+	if (document.getElementById("intervalField").value) {
+		intervalMilliseconds = 1000*document.getElementById("intervalField").value;
+		checkEnabledChange();
+	}
+
+}
+
+function startAutoRevolve() {
+
+  clearInterval(intervalObject);
+  console.log('starting autorevolving at '+intervalMilliseconds+'ms')
+  intervalObject = setInterval(function(){showNextFeed()},intervalMilliseconds);
+}
+
+function stopAutoRevolve() {
+
+  console.log('stopping autorevolving')
+  clearInterval(intervalObject);
+}
+
+
+// Show the next feed, but not the speaker
+function showNextFeed() {
+  
+  var participants = gapi.hangout.getParticipants();
+  var defVideo = gapi.hangout.layout.getDefaultVideoFeed();
+  var currentPart = defVideo.getDisplayedParticipant();
+ 
+  console.log('current participant: '+currentPart);
+
+  var newIndex=0;
+
+  for (var index = 0; index<participants.length; index++) {
+    var part = participants[index];
+  
+    if (part.id == currentPart) {
+
+	if  (index < participants.length-1) {
+		console.log('iterating - '+index+' '+part.id);
+		newIndex=index+1;
+	}
+    }
+  }
+	// don't stop on the local participant
+	if (participants[newIndex].id == gapi.hangout.getLocalParticipantId()){
+		console.log('jumping over local'); 
+		if ( newIndex < participants.length-1) { newIndex++; } else { newIndex = 0;}
+	};
+
+	defVideo.setDisplayedParticipant(participants[newIndex].id);
+
+}
+
+
+// This runs when the gadget is ready
+function init() {
+  console.log('Init Revolver.');
+
+  // When API is ready...
+  gapi.hangout.onApiReady.add(
+      function(eventObj) {
+        if (eventObj.isApiReady) {
+          console.log('API is ready');
+          
+          // Add some listeners
+
+          // When people leave the hangout
+          gapi.hangout.onParticipantsChanged.add(
+              function(eventObj) {
+                console.log('Participants changed');
+              });
+
+          // Every time the default video feed changes, we want the text to change
+          // Note that these events go off whether or not the default video feed
+          // is currently displayed.
+          gapi.hangout.layout.getDefaultVideoFeed().onDisplayedParticipantChanged.add(
+              function(eventObj) {
+                console.log('Displayed participant changed');
+                updateDisplayedParticipant();
+              });
+
+	  // Setting the timer for revolver
+          //startAutoRevolve();
+	  intervalFieldChange();
+        }
+      });
+}
+
+// Wait for gadget to load.
+gadgets.util.registerOnLoadHandler(init);
+
+
+</script>
+    ]]>
+  </Content>
+</Module>
